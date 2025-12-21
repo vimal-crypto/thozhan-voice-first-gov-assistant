@@ -1,72 +1,57 @@
-# Thozhan (தோழன்) - AI-Powered Voice Assistant for Government Schemes
-Thozhan is a **voice-first, vernacular-native assistant** that helps Tamil-speaking citizens discover and access government welfare schemes without needing to read, type, or navigate complex portals. It is designed as a reliable, contextual, and human-like guide rather than just another chatbot.
+# Thozhan (தோழன்) - Voice Assistant for Tamil Government Schemes
 
----
+> This is a demo project for submission. Still working on adding more features and cleaning up the code!
 
-## Why Thozhan is Different
+Thozhan helps Tamil-speaking people find government welfare schemes using voice - so they don't need to read or type anything. Built this because most govt portals are really hard to navigate, especially for people who aren't comfortable with English or typing.
 
-### 1. Solving the Real Access Barrier
+## What Makes This Different
 
-Most government portals assume that users can comfortably **read, type, and navigate UI in English or formal Tamil**. Thozhan flips this assumption by being:
+### 1. Voice-First in Tamil
 
-- **Voice-first**: Users can speak naturally instead of typing.
-- **Vernacular-native**: Tamil is treated as the *primary interface*, not a translated layer.
-- **Accessibility-focused**: Designed for users who are illiterate, tech-shy, or using shared/low-end devices.
+Most government websites assume you can read and type in English or formal Tamil. But:
+- People can just **speak naturally** in Tamil
+- No need to know how to type or navigate menus
+- Works for people who are not comfortable with tech
 
-The goal is simple: if a citizen is **eligible** for a benefit, lack of digital literacy should never be the reason they miss it.
+The idea is simple - if someone is eligible for a government benefit, they shouldn't miss it just because they can't use a computer well.
 
----
+### 2. Hybrid Architecture (Local DB + Web Crawler)
 
-### 2. Hybrid Agentic Architecture
+I'm using two sources:
 
-Standard LLM chatbots often hallucinate, which is unacceptable when dealing with **financial welfare and eligibility**. Thozhan uses a **hybrid tool architecture** to balance reliability and coverage:
+**Local Database (Primary)**
+- Hand-curated list of major schemes
+- Eligibility rules, benefit amounts, documents needed
+- This ensures accuracy for important schemes
+- No hallucinations!
 
-- **Verified Local Knowledge Base (Primary)**  
-  - Curated database of major central and state schemes, eligibility rules, benefit amounts, and required documents.  
-  - Used as the first source of truth for answering questions.  
-  - Ensures **near 100% accuracy** on high-impact, frequently used schemes.
+**Web Crawler (Fallback)**
+- Only used for new/niche schemes not in local DB
+- Searches and scrapes govt websites
+- Clearly indicates when using external source
 
-- **Live Web Crawler (Fallback / Secondary)**  
-  - Activated only for niche, long-tail, or recently updated schemes not present in the local store.  
-  - Used in a controlled way to reduce hallucinations.  
-  - Responses are clearly framed when external sources are involved.
+This way it stays reliable but can still handle new schemes.
 
-This hybrid approach keeps the assistant **trustworthy, auditable, and safe** for real-world usage.
+### 3. Contextual Memory
 
----
+The assistant remembers what you said earlier in the conversation:
+- Your occupation (farmer, student, daily worker, etc.)
+- Your location (district/state)
+- Your economic background
 
-### 3. Contextual Intelligence
+So if you mention "I'm a small farmer from Dindigul" early on, it'll remember and suggest relevant schemes automatically later.
 
-Thozhan is built to behave like a **helpful, memory-aware guide**, not a stateless FAQ bot.
-
-- Maintains **conversational memory** across turns.
-- Remembers key user attributes shared in the session, such as:
-  - Occupation (e.g., farmer, student, daily wage worker)
-  - Location (district/state)
-  - Economic background (e.g., below poverty line)
-- Uses this context to:
-  - Filter and prioritize more relevant schemes.
-  - Personalize follow-up questions.
-  - Avoid repeating already collected information.
-
-**Example:**  
-If the user mentions early in the conversation, *"I am a small farmer from Dindigul"*, Thozhan will remember this and, five turns later, automatically highlight farmer-specific loan waivers, subsidies, or insurance schemes instead of generic suggestions.
-
----
-
-## High-Level Architecture
-
-At a conceptual level, Thozhan consists of:
+## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         USER INTERFACE                          │
-│                    (Voice + Web Interface)                      │
+│                        USER INTERFACE                           │
+│                  (Voice + Web Interface)                        │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      VOICE & INTERFACE LAYER                    │
+│                  VOICE & INTERFACE LAYER                        │
 ├─────────────────────────────────────────────────────────────────┤
 │  • Speech-to-Text (Tamil - Google Speech Recognition)           │
 │  • Text-to-Speech (Tamil - Edge TTS)                            │
@@ -75,22 +60,22 @@ At a conceptual level, Thozhan consists of:
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 ORCHESTRATION & AGENT LAYER                     │
+│              ORCHESTRATION & AGENT LAYER                        │
 ├─────────────────────────────────────────────────────────────────┤
 │  • Conversation Manager (Memory & Context)                      │
 │  • LangGraph Agent (Groq - Llama 3.3 70B)                       │
 │  • Tool Router & Decision Engine                                │
 │                                                                 │
-│  ┌────────────────────┐       ┌──────────────────────┐         │
-│  │   Tool 1:          │       │   Tool 2:            │         │
-│  │   Local DB Search  │       │   Web Crawler        │         │
-│  │   (Primary)        │       │   (Fallback)         │         │
-│  └────────────────────┘       └──────────────────────┘         │
+│   ┌────────────────────┐    ┌──────────────────────┐           │
+│   │    Tool 1:         │    │    Tool 2:           │           │
+│   │  Local DB Search   │    │   Web Crawler        │           │
+│   │   (Primary)        │    │   (Fallback)         │           │
+│   └────────────────────┘    └──────────────────────┘           │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   KNOWLEDGE & DATA LAYER                        │
+│                  KNOWLEDGE & DATA LAYER                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  • Verified Scheme Database (schemes_tamil.json)                │
 │  • Eligibility Rules & Criteria                                 │
@@ -109,371 +94,129 @@ At a conceptual level, Thozhan consists of:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-- **Voice & Interface Layer**
-  - Speech-to-Text (Tamil)
-  - Text-to-Speech (natural Tamil voice)
-  - Simple mobile-friendly UI
+## Quick Demo Flow
 
-- **Orchestration & Agent Layer**
-  - Conversation manager with memory
-  - Tool/router that decides when to:
-    - Query local scheme database
-    - Trigger web crawler
-    - Ask clarification questions
+1. User speaks in Tamil: "நான் ஒரு சிறு விவசாயி. என்னக்கு என்னென்ன அரசு உதவித் திட்டங்கள் கிடைக்கும்?"
+2. System converts speech → text → detects user is a farmer
+3. Searches local database for farmer schemes
+4. Responds with scheme details in Tamil (text + voice)
+5. If asked about something not in DB, falls back to web search
 
-- **Knowledge & Data Layer**
-  - Structured scheme database (central + state schemes)
-  - Metadata for eligibility rules, documents, deadlines, and links
-  - Logging for auditability and improvements
-
----
-
-## Demo Scenario (For Reviewers)
-
-This repository is primarily for **project demo submission**. A typical demo flow looks like this:
-
-1. User taps the mic and speaks in Tamil:  
-   "நான் ஒரு சிறு விவசாயி. என்னக்கு என்னென்ன அரசு உதவித் திட்டங்கள் கிடைக்கும்?"
-
-2. Thozhan:
-   - Converts speech to text.
-   - Detects that the user is a **farmer**.
-   - Queries the **local scheme database** for farmer-related schemes.
-   - Responds in spoken Tamil with:
-     - Relevant schemes.
-     - Eligibility summary.
-     - Next steps (e.g., where to apply, what documents are needed).
-
-3. If the user asks about a very new or niche scheme:
-   - The assistant switches to the **web crawler**.
-   - Fetches and summarizes updated information.
-   - Clearly indicates that it is using an external source.
-
----
-
-## Repository Structure (Planned)
-
-This repo is currently focused on explaining the concept and architecture for demo purposes. Planned structure:
-
-- `README.md` – Concept, architecture, and demo explanation (this file)
-- `architecture/` – Diagrams and design notes (to be added)
-- `data/` – Sample scheme metadata / mock database (to be added)
-- `notebooks/` – Prototype experiments for STT, TTS, and intent classification (to be added)
-- `app/` – Backend / orchestration code (to be added)
-- `ui/` – Frontend or mobile interface (to be added)
-
----
-
-## Status
-
-- ✅ Concept and system design finalized  
-- ✅ Demo-ready narrative for evaluation  
-- 🔄 Implementation and code cleanup in progress  
-- 🔜 Will be updated with code, data samples, and architecture diagrams after demo submission
-
----
-
-## How to Use This Repo for the Demo
-
-- Treat this repository as the **official reference** for:
-  - Problem framing
-  - Core differentiators
-  - Architecture philosophy
-  - Example interaction flow
-- Post-demo, this repo will evolve into a **full implementation** with:
-  - Deployed prototype
-  - API endpoints
-  - Sample configuration for different states / languages
-
----
-
-## Contact
-
-For collaboration, feedback, or implementation discussions, please reach out via GitHub profile.
-
----
-
-## 🚀 Quick Start Guide
+## How to Run
 
 ### Prerequisites
+- Python 3.8+
+- FFmpeg (for audio)
+- Microphone
+- Internet connection
 
-- Python 3.8 or higher
-- FFmpeg (for audio processing)
-- Microphone access (for voice input)
-- Active internet connection
-
-### Installation
-
-#### 1. Clone the Repository
+### Setup
 
 ```bash
 git clone https://github.com/vimal-crypto/thozhan-voice-first-gov-assistant.git
 cd thozhan-voice-first-gov-assistant
-```
 
-#### 2. Create Virtual Environment
-
-```bash
+# Create virtual environment
 python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# On Windows
-venv\Scripts\activate
-
-# On macOS/Linux
-source venv/bin/activate
-```
-
-#### 3. Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-#### 4. Set Up API Keys
+# Get FREE Groq API Key
+# 1. Go to https://console.groq.com/
+# 2. Sign up (it's free!)
+# 3. Create API key
 
-**Get your FREE Groq API Key:**
-1. Visit [https://console.groq.com/](https://console.groq.com/)
-2. Sign up for a free account
-3. Navigate to API Keys section
-4. Create a new API key
+# Set up environment variable
+export GROQ_API_KEY="your_api_key_here"  # On Windows: set GROQ_API_KEY=...
 
-**Configure Environment Variables:**
+# Or create .env file:
+echo "GROQ_API_KEY=your_api_key_here" > .env
 
-Create a `.env` file in the project root:
-
-```bash
-# .env
-GROQ_API_KEY=your_groq_api_key_here
-```
-
-**Alternative:** Export directly in terminal:
-
-```bash
-# Windows
-set GROQ_API_KEY=your_groq_api_key_here
-
-# macOS/Linux
-export GROQ_API_KEY=your_groq_api_key_here
-```
-
-#### 5. Create Project Structure
-
-Create the following folders:
-
-```bash
-mkdir -p voiceagent/data voiceagent/temp_audio static
-```
-
----
-
-## 📁 Project Structure
-
-```
-thozhan-voice-first-gov-assistant/
-├── app.py                          # FastAPI server & main application
-├── voiceagent/
-│   ├── __init__.py                # Package initializer
-│   ├── agent.py                    # LangGraph agent with tools
-│   ├── audio_utils.py              # STT & TTS handlers
-│   ├── crawler_tool.py             # Web scraping tool
-│   ├── data/
-│   │   └── schemes_tamil.json      # Local scheme database
-│   └── temp_audio/                 # Temporary audio files
-├── static/
-│   └── index.html                  # Web UI
-├── requirements.txt                # Python dependencies
-├── .env                            # API keys (create this)
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
----
-
-## ▶️ Running the Application
-
-### Start the Server
-
-```bash
+# Run the app
 python app.py
 ```
 
-The server will start on `http://localhost:8000`
+Open `http://localhost:8000` in your browser.
 
-### Access the Web Interface
+## Project Structure
 
-Open your browser and navigate to:
 ```
-http://localhost:8000
-```
-
----
-
-## 🎯 How to Use
-
-1. **Grant Microphone Permission** when prompted by your browser
-2. **Click the Microphone Button** at the bottom of the screen
-3. **Speak in Tamil** about the government scheme you're looking for
-   - Example: "நான் ஒரு விவசாயி. எனக்கு கடன் உதவி தேவை"
-4. **Wait for Response** - Thozhan will:
-   - Convert your speech to text
-   - Search the local database first
-   - Fall back to web search if needed
-   - Respond with scheme details in Tamil (both text and voice)
-
----
-
-## 🔧 Configuration
-
-### Modifying System Prompt
-
-Edit `voiceagent/agent.py` to customize the AI behavior:
-
-```python
-SYSTEM_PROMPT = """
-Your custom instructions here...
-"""
+thozhan-voice-first-gov-assistant/
+├── app.py                    # Main FastAPI server
+├── voiceagent/
+│   ├── agent.py              # LangGraph agent with tools
+│   ├── audio_utils.py        # STT & TTS handlers  
+│   ├── crawler_tool.py       # Web scraping tool
+│   ├── data/
+│   │   └── schemes_tamil.json  # Local scheme database
+│   └── temp_audio/           # Temp audio files
+├── static/
+│   └── index.html            # Web UI
+├── requirements.txt
+├── .env                      # Your API keys (DON'T COMMIT THIS!)
+└── README.md
 ```
 
-### Adding Schemes to Database
+## Tech Stack
 
-Edit `voiceagent/data/schemes_tamil.json` to add verified schemes:
+- **FastAPI** - Web framework
+- **LangChain/LangGraph** - AI orchestration
+- **Groq** - Fast LLM inference (free tier)
+- **Google Speech Recognition** - Tamil STT
+- **Edge-TTS** - Tamil TTS
+- **BeautifulSoup** - Web scraping
+- **DuckDuckGo Search** - Privacy-focused search
 
-```json
-[
-  {
-    "name_english": "PM Kisan",
-    "name_tamil": "பிரதமர் கிசான்",
-    "description_english": "Direct income support",
-    "description_tamil": "நேரடி வருமான உதவி",
-    "eligibility_criteria": ["Small farmers", "Own land"],
-    "benefits_english": "₹6000 per year",
-    "benefits_tamil": "ஆண்டுக்கு ₹6000",
-    "category": "Agriculture"
-  }
-]
-```
+## Current Status
 
----
-
-## 🐛 Troubleshooting
-
-### Issue: "GROQ_API_KEY not found"
-**Solution:** Make sure you've set the environment variable or created a `.env` file
-
-### Issue: "No module named 'voiceagent'"
-**Solution:** Make sure you're in the project root directory and the `voiceagent` folder exists
-
-### Issue: "Microphone not working"
-**Solution:** 
-- Check browser permissions
-- Use HTTPS or localhost (required for mic access)
-- Try a different browser
-
-### Issue: "FFmpeg not found"
-**Solution:**
-```bash
-pip install static-ffmpeg
-```
-
----
-
-## 📝 Code Files Overview
-
-### `app.py`
-Main FastAPI application that:
-- Serves the web interface
-- Handles audio file uploads
-- Coordinates STT → Agent → TTS pipeline
-- Manages conversation history
-
-### `voiceagent/agent.py`
-LangGraph agentic system with:
-- Local database search tool
-- Web crawler fallback tool
-- Groq LLM (Llama 3.3 70B)
-- Conditional routing logic
-
-### `voiceagent/audio_utils.py`
-Audio processing utilities:
-- Speech-to-Text (Google Speech Recognition)
-- Text-to-Speech (Edge TTS with Tamil voice)
-- Audio format conversion
-
-### `voiceagent/crawler_tool.py`
-Web scraping tool that:
-- Searches DuckDuckGo for schemes
-- Scrapes government websites
-- Extracts structured data using Groq LLM
-- Saves new schemes to database
-
-### `static/index.html`
-Web UI with:
-- Gemini-inspired dark theme
-- Voice recording functionality
-- Real-time audio playback
-- Chat interface
-
----
-
-## 🌟 Features Implemented
-
-✅ Voice-first Tamil interface  
-✅ Speech-to-Text (Tamil)  
-✅ Text-to-Speech (Tamil)  
-✅ Hybrid tool architecture (Local DB + Web Crawler)  
-✅ LangGraph agentic system  
+✅ Basic voice interface working  
+✅ Speech-to-text in Tamil  
+✅ Text-to-speech in Tamil  
+✅ Local database search  
+✅ Web crawler fallback  
 ✅ Conversational memory  
-✅ Web-based UI  
-✅ Real-time audio processing  
+
+🚧 Working on:
+- Adding more schemes to database
+- Improving accuracy
+- Better error handling
+- Testing with real users
+
+## Known Issues
+
+- Sometimes STT struggles with heavy Tamil accents (working on it)
+- Web crawler can be slow for complex govt sites
+- Need to expand scheme database
+
+## Why I Built This
+
+During my final year, I noticed that many government schemes never reach the people who actually need them. The biggest barrier isn't eligibility - it's the complexity of accessing information. Most portals assume digital literacy that many Indians don't have.
+
+Thozhan is my attempt to solve this by meeting people where they are - through voice, in their language.
+
+## Notes
+
+- Groq API is FREE to use (generous free tier)
+- No data is stored - everything is in-memory
+- STT/TTS processing happens locally
+- **Never commit your `.env` file** - it has your API key!
+
+## Contributing
+
+This is still a work in progress! If you want to contribute:
+- Fork it
+- Create a branch
+- Make your changes
+- Submit a PR
+
+Or just open an issue if you find bugs or have suggestions.
+
+## License
+
+MIT License - feel free to use this for your own projects!
 
 ---
 
-## 📦 Dependencies Explained
-
-- **FastAPI**: Modern web framework for the API
-- **LangChain & LangGraph**: Agentic AI orchestration
-- **Groq**: Fast LLM inference (free tier available)
-- **SpeechRecognition**: Speech-to-text
-- **Edge-TTS**: Natural Tamil text-to-speech
-- **BeautifulSoup4**: Web scraping
-- **DuckDuckGo-Search**: Privacy-focused search
-
----
-
-## 🔐 Security Notes
-
-- **Never commit `.env` file** - it contains your API keys
-- **API keys are free** - Groq offers generous free tier
-- **Local processing** - STT/TTS happens on your machine
-- **No data storage** - Conversation history is in-memory only
-
----
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
----
-
-## 📧 Support
-
-For issues or questions:
-- Open a GitHub Issue
-- Check existing issues first
-- Provide error logs and system info
-
----
-
-
-For collaboration, feedback, or implementation discussions, please reach out via GitHub profile.
+Built as a demo project. Feedback welcome!
