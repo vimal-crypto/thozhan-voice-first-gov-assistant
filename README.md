@@ -1,4 +1,4 @@
-# Thozhan (தோழன்) - Voice Assistant for Tamil Government Schemes
+# Thozhan (தோழன்) - Tamil Voice Assistant for Government Schemes
 
 Thozhan helps Tamil-speaking people find government welfare schemes using voice - so they don't need to read or type anything. Built this because most govt portals are really hard to navigate, especially for people who aren't comfortable with English or typing.
 
