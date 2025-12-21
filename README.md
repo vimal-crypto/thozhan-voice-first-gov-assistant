@@ -1,4 +1,4 @@
-# Thozhan (தோழன்) - AI-Powered Voice Assistant for Tamil Government Schemes
+# Thozhan (தோழன்) - AI-Powered Voice Assistant for Government Schemes
 Thozhan is a **voice-first, vernacular-native assistant** that helps Tamil-speaking citizens discover and access government welfare schemes without needing to read, type, or navigate complex portals. It is designed as a reliable, contextual, and human-like guide rather than just another chatbot.
 
 ---
