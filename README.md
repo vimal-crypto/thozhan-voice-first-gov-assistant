@@ -58,6 +58,57 @@ If the user mentions early in the conversation, *"I am a small farmer from Dindi
 
 At a conceptual level, Thozhan consists of:
 
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER INTERFACE                          │
+│                    (Voice + Web Interface)                      │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      VOICE & INTERFACE LAYER                    │
+├─────────────────────────────────────────────────────────────────┤
+│  • Speech-to-Text (Tamil - Google Speech Recognition)           │
+│  • Text-to-Speech (Tamil - Edge TTS)                            │
+│  • Simple Mobile-Friendly UI                                    │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 ORCHESTRATION & AGENT LAYER                     │
+├─────────────────────────────────────────────────────────────────┤
+│  • Conversation Manager (Memory & Context)                      │
+│  • LangGraph Agent (Groq - Llama 3.3 70B)                       │
+│  • Tool Router & Decision Engine                                │
+│                                                                 │
+│  ┌────────────────────┐       ┌──────────────────────┐         │
+│  │   Tool 1:          │       │   Tool 2:            │         │
+│  │   Local DB Search  │       │   Web Crawler        │         │
+│  │   (Primary)        │       │   (Fallback)         │         │
+│  └────────────────────┘       └──────────────────────┘         │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   KNOWLEDGE & DATA LAYER                        │
+├─────────────────────────────────────────────────────────────────┤
+│  • Verified Scheme Database (schemes_tamil.json)                │
+│  • Eligibility Rules & Criteria                                 │
+│  • Document Requirements                                        │
+│  • Application Links & Deadlines                                │
+│  • Conversation Logs (In-Memory)                                │
+└─────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    EXTERNAL SERVICES                            │
+├─────────────────────────────────────────────────────────────────┤
+│  • DuckDuckGo Search API                                        │
+│  • Government Websites (Tamil Nadu / Central)                   │
+│  • Groq API (LLM Inference)                                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 - **Voice & Interface Layer**
   - Speech-to-Text (Tamil)
   - Text-to-Speech (natural Tamil voice)
@@ -424,6 +475,5 @@ For issues or questions:
 
 ---
 
-**Built with ❤️ for Tamil-speaking citizens seeking government welfare assistance**
 
 For collaboration, feedback, or implementation discussions, please reach out via GitHub profile.
