@@ -5,6 +5,10 @@ import logging
 import asyncio
 from collections import defaultdict
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 try:
     import static_ffmpeg
     static_ffmpeg.add_paths()
@@ -13,8 +17,11 @@ except ImportError:
     print("   static-ffmpeg not found, please pip install static-ffmpeg")
 
 if "GROQ_API_KEY" not in os.environ:
-    os.environ["GROQ_API_KEY"] = "REMOVED_KEY"
-
+    raise EnvironmentError(
+        "❌ GROQ_API_KEY not found!\n"
+        "Please set it in .env file or as environment variable.\n"
+        "Get your FREE key at: https://console.groq.com/"
+    )
 from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -152,3 +159,4 @@ async def get_audio(filename: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
