@@ -3,7 +3,7 @@ import shutil
 import uuid
 import logging
 import asyncio
-from collections import defaultdict
+from pathlib import Path
 
 try:
     import static_ffmpeg
@@ -12,45 +12,41 @@ try:
 except ImportError:
     print("   static-ffmpeg not found, please pip install static-ffmpeg")
 
-if "GROQ_API_KEY" not in os.environ:
-    os.environ["GROQ_API_KEY"] = ""
-
-from fastapi import FastAPI, File, UploadFile, Request
+from fastapi import FastAPI, File, UploadFile, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from voice_agent.audio_utils import AudioHandler
-from voice_agent.agent import app_agent
+from voice_agent.audio_utils import AudioHandler, TEMP_DIR
+from voice_agent.agent import app_agent, SYSTEM_PROMPT
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from voice_agent.agent import SYSTEM_PROMPT
 
-app = FastAPI(title="Tamil Voice Agent")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-conversation_history = []
+app = FastAPI(title="Tamil Voice Agent - Thozhan")
 
-user_profile = {
-    "age": None,
-    "income": None,
-    "occupation": None,
-    "location": None
-}
+# --- Per-session conversation isolation ---
+# Each session_id maps to its own conversation history
+session_store: dict[str, list] = {}
 
-def clear_conversation():
-    global conversation_history, user_profile
-    conversation_history = []
-    user_profile = {"age": None, "income": None, "occupation": None, "location": None}
+def get_session(session_id: str) -> list:
+    if session_id not in session_store:
+        session_store[session_id] = []
+    return session_store[session_id]
 
-def add_to_history(role: str, content: str):
-    conversation_history.append((role, content))
-    if len(conversation_history) > 20:
-        conversation_history.pop(0)
-        conversation_history.pop(0)
+def add_to_session(session_id: str, role: str, content: str):
+    history = get_session(session_id)
+    history.append((role, content))
+    # Keep last 20 messages per session
+    if len(history) > 20:
+        history.pop(0)
+        history.pop(0)
 
-def get_history_as_messages():
+def get_history_as_messages(session_id: str) -> list:
     messages = []
-    for role, content in conversation_history:
+    for role, content in get_session(session_id):
         if role == "user":
             messages.append(HumanMessage(content=content))
         else:
@@ -58,9 +54,11 @@ def get_history_as_messages():
     return messages
 
 
+# Restrict CORS to specific origins in production
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,87 +66,113 @@ app.add_middleware(
 
 audio_handler = AudioHandler()
 
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 @app.get("/")
 async def read_root():
-    return FileResponse(os.path.join(static_dir, "index.html"))
+    return FileResponse(str(static_dir / "index.html"))
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "thozhan-voice-assistant"}
 
 
 @app.post("/clear")
-async def clear_session():
-    clear_conversation()
+async def clear_session(request: Request):
+    session_id = request.cookies.get("session_id", "default")
+    session_store.pop(session_id, None)
     return {"status": "cleared"}
 
 
-@app.post("/chat/audio")
-async def chat_audio(file: UploadFile = File(...)):
-    import traceback
-    
+def _delete_file(path: str):
+    """Background task to delete a file after it has been served."""
     try:
-        print("[SERVER] Received audio file, starting processing...")
-        
-        temp_filename = f"input_{file.filename}"
-        temp_path = os.path.join("voice_agent", "temp_audio", temp_filename)
-        
+        if os.path.exists(path):
+            os.remove(path)
+            logger.info(f"[CLEANUP] Deleted served audio: {os.path.basename(path)}")
+    except Exception as e:
+        logger.warning(f"[CLEANUP] Could not delete {path}: {e}")
+
+
+@app.post("/chat/audio")
+async def chat_audio(request: Request, file: UploadFile = File(...)):
+    import traceback
+
+    # Get or create session ID from cookie
+    session_id = request.cookies.get("session_id") or str(uuid.uuid4())
+
+    try:
+        logger.info("[SERVER] Received audio file, starting processing...")
+
+        # Sanitize filename to prevent path traversal
+        safe_filename = f"input_{uuid.uuid4()}.wav"
+        temp_path = str(TEMP_DIR / safe_filename)
+
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        print(f"[SERVER] Saved file to: {temp_path}")
-        
-        print("[SERVER] Starting Speech-to-Text...")
-        user_text = audio_handler.speech_to_text(temp_path)
-        print(f"[SERVER] STT Result: (detected {len(user_text)} chars)")
-        
-        if not user_text:
-            return JSONResponse(status_code=400, content={"error": "Could not recognize speech. Try again."})
+        logger.info(f"[SERVER] Saved file to: {temp_path}")
 
-        print(f"[AGENT] Thinking on: (Tamil text - {len(user_text)} chars)")
-        
-        add_to_history("user", user_text)
-        
-        all_messages = [SystemMessage(content=SYSTEM_PROMPT)] + get_history_as_messages()
+        logger.info("[SERVER] Starting Speech-to-Text...")
+        user_text = audio_handler.speech_to_text(temp_path)
+        logger.info(f"[SERVER] STT Result: {len(user_text)} chars")
+
+        if not user_text:
+            return JSONResponse(status_code=400, content={"error": "Could not recognize speech. Please try again."})
+
+        add_to_session(session_id, "user", user_text)
+
+        all_messages = [SystemMessage(content=SYSTEM_PROMPT)] + get_history_as_messages(session_id)
         inputs = {"messages": all_messages}
-        
-        print(f"[AGENT] Conversation history: {len(conversation_history)} messages")
-        
-        print("[AGENT] Invoking agent...")
+
+        logger.info("[AGENT] Invoking agent...")
         outputs = await asyncio.to_thread(
-            app_agent.invoke, 
-            inputs, 
-            config={"recursion_limit": 5}
+            app_agent.invoke,
+            inputs,
+            config={"recursion_limit": 10}
         )
         last_msg = outputs["messages"][-1]
         final_response_text = last_msg.content
-        
-        add_to_history("assistant", final_response_text)
-        
-        print(f"[AGENT] Replied: (Tamil text - {len(final_response_text)} chars)")
 
-        print("[SERVER] Starting Text-to-Speech...")
+        add_to_session(session_id, "assistant", final_response_text)
+        logger.info(f"[AGENT] Replied: {len(final_response_text)} chars")
+
+        logger.info("[SERVER] Starting Text-to-Speech...")
         audio_response_path = await audio_handler.text_to_speech(final_response_text)
-        print(f"[SERVER] TTS complete: {audio_response_path}")
-        
+        logger.info(f"[SERVER] TTS complete: {audio_response_path}")
+
         filename = os.path.basename(audio_response_path)
-        return {
+        response = JSONResponse(content={
             "user_text": user_text,
             "agent_text": final_response_text,
-            "audio_url": f"/audio/{filename}"
-        }
-        
+            "audio_url": f"/audio/{filename}",
+            "session_id": session_id
+        })
+        response.set_cookie(key="session_id", value=session_id, httponly=True, samesite="lax")
+        return response
+
     except Exception as e:
-        print(f"[ERROR] Exception in chat_audio: {str(e)}")
+        logger.error(f"[ERROR] Exception in chat_audio: {str(e)}")
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.get("/audio/{filename}")
-async def get_audio(filename: str):
-    path = os.path.join("voice_agent", "temp_audio", filename)
+async def get_audio(filename: str, background_tasks: BackgroundTasks):
+    # Sanitize: only allow safe filenames (no path traversal)
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return JSONResponse(status_code=400, content={"error": "Invalid filename"})
+    path = str(TEMP_DIR / filename)
+    if not os.path.exists(path):
+        return JSONResponse(status_code=404, content={"error": "Audio file not found"})
+    # Delete after serving
+    background_tasks.add_task(_delete_file, path)
     return FileResponse(path)
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

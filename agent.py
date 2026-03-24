@@ -1,43 +1,48 @@
 import os
 import json
-from typing import Annotated, Literal, TypedDict
+from pathlib import Path
+from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_groq import ChatGroq
 
-if "GROQ_API_KEY" not in os.environ:
-    os.environ["GROQ_API_KEY"] = "REMOVED_KEY"
+# NEVER hardcode API keys. Load from environment only.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise EnvironmentError("GROQ_API_KEY is not set. Please add it to your .env file.")
 
 from voice_agent.crawler_tool import AgenticCrawler
+
+DB_PATH = Path(__file__).parent / "voice_agent" / "data" / "schemes_tamil.json"
 
 
 @tool
 def lookup_scheme_database(query: str):
     """
     Search for government schemes in the local verified database.
-    Use this FIRST.
+    Use this FIRST before any web search.
     Args:
         query: Keywords like "women", "student", "farmer", "health".
     """
     print(f"[DB] Checking Local DB for: {query}")
     try:
-        with open("voice_agent/data/schemes_tamil.json", "r", encoding="utf-8") as f:
+        with open(DB_PATH, "r", encoding="utf-8") as f:
             schemes = json.load(f)
-    except:
-        return "Database empty."
+    except Exception:
+        return "Database empty or unreadable."
 
     results = []
-    query = query.lower()
+    query_lower = query.lower()
     for s in schemes:
         text_blob = f"{s.get('name_english', '')} {s.get('description_english', '')} {s.get('category', '')}".lower()
-        if query in text_blob:
+        if query_lower in text_blob:
             results.append(s)
-    
+
     if not results:
         return "No matching schemes found in local database."
-    
+
     return json.dumps(results[:3], ensure_ascii=False)
 
 
@@ -45,7 +50,7 @@ def lookup_scheme_database(query: str):
 def search_online_fallback(query: str):
     """
     Use this ONLY if 'lookup_scheme_database' returns no results.
-    Crawls the web to find new schemes.
+    Crawls the web to find new government schemes.
     Args:
         query: The specific scheme name or topic to find.
     """
@@ -69,11 +74,11 @@ llm_with_tools = llm.bind_tools(tools)
 
 
 SYSTEM_PROMPT = """
-நீங்கள் "தோழன்" என்ற அரசு நலத் திட்ட உதவியாளர்.
+நீங்கள் \"தோழன்\" என்ற அரசு நலத் திட்ட உதவியாளர்.
 
 === முதல் வரவேற்பு ===
 உரையாடலின் தொடக்கத்தில், இவ்வாறு அறிமுகப்படுத்துங்கள்:
-"வணக்கம்! நான் தோழன். மத்திய மற்றும் மாநில அரசு நலத்திட்டங்களை கண்டறிய உதவுகிறேன்."
+\"வணக்கம்! நான் தோழன். மத்திய மற்றும் மாநில அரசு நலத்திட்டங்களை கண்டறிய உதவுகிறேன்.\"
 பின்னர் வயது கேளுங்கள்.
 
 === கட்டாய விதிகள் ===
@@ -106,6 +111,7 @@ SYSTEM_PROMPT = """
 def chatbot(state: AgentState):
     return {"messages": [llm_with_tools.invoke(state["messages"])]}
 
+
 def should_continue(state: AgentState) -> str:
     last_msg = state["messages"][-1]
     if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
@@ -120,23 +126,10 @@ graph_builder.add_node("tools", tool_node)
 
 graph_builder.add_conditional_edges("agent", should_continue)
 graph_builder.add_edge("tools", "agent")
-
 graph_builder.set_entry_point("agent")
 
-compiled_agent = graph_builder.compile()
-
-
-class SimpleAgent:
-    def invoke(self, inputs, config=None):
-        try:
-            response = llm.invoke(inputs["messages"])
-            return {"messages": inputs["messages"] + [response]}
-        except Exception as e:
-            from langchain_core.messages import AIMessage
-            return {"messages": inputs["messages"] + [AIMessage(content=f"Sorry, error occurred: {str(e)}")]}
-
-
-app_agent = SimpleAgent()
+# Use the real compiled LangGraph agent (tools are now active)
+app_agent = graph_builder.compile()
 
 
 if __name__ == "__main__":
