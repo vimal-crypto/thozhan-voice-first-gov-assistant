@@ -8,8 +8,6 @@ load_dotenv()
 
 # ── Patch httpx BEFORE importing groq/langchain_groq ──────────────────────────
 # httpx 0.28+ removed the 'proxies' kwarg. groq SDK still passes it internally.
-# This monkey-patch removes 'proxies' from kwargs before httpx.Client.__init__
-# runs, making groq work on any Python/httpx version including Railway's default.
 import httpx
 _original_init = httpx.Client.__init__
 def _patched_init(self, *args, **kwargs):
@@ -27,11 +25,11 @@ httpx.AsyncClient.__init__ = _patched_async_init
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langchain_groq import ChatGroq
+from groq import BadRequestError
 
-# FIX 1: Strip trailing newlines/whitespace from API key.
-# A newline in the Bearer token causes httpcore.LocalProtocolError (Illegal header value).
+# Strip trailing newlines/whitespace from API key to avoid httpcore.LocalProtocolError.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 if not GROQ_API_KEY:
     raise EnvironmentError("GROQ_API_KEY is not set. Please add it to your .env file.")
@@ -42,12 +40,11 @@ DB_PATH = Path(__file__).parent / "data" / "schemes_tamil.json"
 
 
 @tool
-def lookup_scheme_database(query: str):
+def lookup_scheme_database(query: str) -> str:
     """
-    Search for government schemes in the local verified database.
-    Use this FIRST before any web search.
-    Args:
-        query: Keywords like "women", "student", "farmer", "health".
+    Search for government welfare schemes in the local Tamil Nadu / Central Govt database.
+    Always call this tool first before any web search.
+    Input should be simple English keywords such as: women, student, farmer, health, housing.
     """
     print(f"[DB] Checking Local DB for: {query}")
     try:
@@ -59,7 +56,11 @@ def lookup_scheme_database(query: str):
     results = []
     query_lower = query.lower()
     for s in schemes:
-        text_blob = f"{s.get('name_english', '')} {s.get('description_english', '')} {s.get('category', '')}".lower()
+        text_blob = (
+            f"{s.get('name_english', '')} "
+            f"{s.get('description_english', '')} "
+            f"{s.get('category', '')}"
+        ).lower()
         if query_lower in text_blob:
             results.append(s)
 
@@ -70,20 +71,18 @@ def lookup_scheme_database(query: str):
 
 
 @tool
-def search_online_fallback(query: str):
+def search_online_fallback(query: str) -> str:
     """
-    Use this ONLY if 'lookup_scheme_database' returns no results.
-    Crawls the web to find new government schemes.
-    Args:
-        query: The specific scheme name or topic to find.
+    Search the internet for government welfare schemes.
+    Use this ONLY when lookup_scheme_database returns no results.
+    Input should be a short English search phrase, e.g. 'student scholarship Tamil Nadu'.
     """
     print(f"[WEB] DB Miss. Triggering Live Crawler for: {query}")
     crawler = AgenticCrawler()
     result = crawler.search_and_scrape(query)
     if result:
         return json.dumps(result, ensure_ascii=False)
-    else:
-        return "Could not find reliable information online."
+    return "Could not find reliable information online."
 
 
 class AgentState(TypedDict):
@@ -91,7 +90,16 @@ class AgentState(TypedDict):
 
 
 tools = [lookup_scheme_database, search_online_fallback]
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=GROQ_API_KEY)
+
+# FIX: Use llama3-groq-70b-8192-tool-use-preview — a model specifically
+# fine-tuned for reliable JSON tool calls on Groq.
+# llama-3.3-70b-versatile sometimes emits malformed XML-style tool calls
+# (<function=name{...}>) which Groq rejects with a 400 tool_use_failed error.
+llm = ChatGroq(
+    model="llama3-groq-70b-8192-tool-use-preview",
+    temperature=0,
+    api_key=GROQ_API_KEY,
+)
 llm_with_tools = llm.bind_tools(tools)
 
 
@@ -109,6 +117,7 @@ SYSTEM_PROMPT = """
 3. **கேள்விகள்**: ஒரு நேரத்தில் ஒரு கேள்வி மட்டும் கேளுங்கள்.
 4. **சுருக்கமாக பேசு**: குரல் வழி உதவி என்பதால், பதில்கள் சுருக்கமாகவும் தெளிவாகவும் இருக்க வேண்டும்.
 5. **தமிழில் மட்டும்**: எல்லா பதில்களும் தமிழில் மட்டுமே இருக்க வேண்டும்.
+6. **கருவிகளை ஆங்கிலத்தில் பயன்படுத்து**: lookup_scheme_database மற்றும் search_online_fallback கருவிகளுக்கு query எப்போதும் ஆங்கிலத்தில் இருக்க வேண்டும்.
 
 === உரையாடல் ஓட்டம் ===
 தேவையான தகவல்கள்: வயது, ஆண்டு வருமானம், தொழில்/வேலை
@@ -116,8 +125,22 @@ SYSTEM_PROMPT = """
 """
 
 
+# FIX: Catch BadRequestError (tool_use_failed) in chatbot node.
+# When the model fails to format a tool call correctly, return a graceful
+# Tamil fallback message instead of crashing the entire request with a 500.
 def chatbot(state: AgentState):
-    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+    try:
+        return {"messages": [llm_with_tools.invoke(state["messages"])]}
+    except BadRequestError as e:
+        error_str = str(e)
+        print(f"[AGENT] BadRequestError (tool_use_failed), returning graceful fallback: {error_str}")
+        fallback = AIMessage(
+            content=(
+                "மன்னிக்கவும், தகவல் தேடும்போது சிறிய பிழை ஏற்பட்டது. "
+                "தயவுசெய்து மீண்டும் முயற்சிக்கவும்."
+            )
+        )
+        return {"messages": [fallback]}
 
 
 def should_continue(state: AgentState) -> str:
