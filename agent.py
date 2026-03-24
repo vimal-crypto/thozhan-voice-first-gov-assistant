@@ -30,7 +30,9 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_groq import ChatGroq
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# FIX 1: Strip trailing newlines/whitespace from API key.
+# A newline in the Bearer token causes httpcore.LocalProtocolError (Illegal header value).
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 if not GROQ_API_KEY:
     raise EnvironmentError("GROQ_API_KEY is not set. Please add it to your .env file.")
 
@@ -89,7 +91,7 @@ class AgentState(TypedDict):
 
 
 tools = [lookup_scheme_database, search_online_fallback]
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=GROQ_API_KEY)
 llm_with_tools = llm.bind_tools(tools)
 
 

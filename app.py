@@ -26,7 +26,12 @@ from audio_utils import AudioHandler, TEMP_DIR
 from agent import app_agent, SYSTEM_PROMPT
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
+# FIX 3: Configure log levels explicitly so Uvicorn INFO messages are not
+# incorrectly captured as severity=error by the deployment platform.
 logging.basicConfig(level=logging.INFO)
+logging.getLogger("uvicorn").setLevel(logging.INFO)
+logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+logging.getLogger("uvicorn.error").setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Tamil Voice Agent - Thozhan")
@@ -124,8 +129,13 @@ async def chat_audio(request: Request, file: UploadFile = File(...)):
         user_text = audio_handler.speech_to_text(temp_path)
         logger.info(f"[SERVER] STT Result: {len(user_text)} chars")
 
-        if not user_text:
-            return JSONResponse(status_code=400, content={"error": "Could not recognize speech. Please try again."})
+        # FIX 2: Guard against empty or whitespace-only STT result.
+        # Google STT may return empty string for silence or unintelligible audio.
+        if not user_text or not user_text.strip():
+            return JSONResponse(
+                status_code=400,
+                content={"error": "உங்கள் குரல் புரியவில்லை. தெளிவாக பேசி மீண்டும் முயற்சிக்கவும். (Could not recognize speech. Please speak clearly and try again.)"}
+            )
 
         add_to_session(session_id, "user", user_text)
 
@@ -180,4 +190,4 @@ async def get_audio(filename: str, background_tasks: BackgroundTasks):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
