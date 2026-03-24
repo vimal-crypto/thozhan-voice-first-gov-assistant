@@ -3,15 +3,33 @@ import json
 from pathlib import Path
 from typing import TypedDict
 from dotenv import load_dotenv
+
+load_dotenv()
+
+# ── Patch httpx BEFORE importing groq/langchain_groq ──────────────────────────
+# httpx 0.28+ removed the 'proxies' kwarg. groq SDK still passes it internally.
+# This monkey-patch removes 'proxies' from kwargs before httpx.Client.__init__
+# runs, making groq work on any Python/httpx version including Railway's default.
+import httpx
+_original_init = httpx.Client.__init__
+def _patched_init(self, *args, **kwargs):
+    kwargs.pop("proxies", None)
+    _original_init(self, *args, **kwargs)
+httpx.Client.__init__ = _patched_init
+
+_original_async_init = httpx.AsyncClient.__init__
+def _patched_async_init(self, *args, **kwargs):
+    kwargs.pop("proxies", None)
+    _original_async_init(self, *args, **kwargs)
+httpx.AsyncClient.__init__ = _patched_async_init
+# ── End patch ─────────────────────────────────────────────────────────────────
+
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_groq import ChatGroq
 
-load_dotenv()
-
-# Guard GROQ_API_KEY before any heavy imports
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise EnvironmentError("GROQ_API_KEY is not set. Please add it to your .env file.")
@@ -71,8 +89,6 @@ class AgentState(TypedDict):
 
 
 tools = [lookup_scheme_database, search_online_fallback]
-
-# ChatGroq instantiated at module load — requires httpx==0.27.2 to avoid proxies error
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 llm_with_tools = llm.bind_tools(tools)
 
