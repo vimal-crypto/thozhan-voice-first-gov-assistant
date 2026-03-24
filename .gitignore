@@ -207,3 +207,5 @@ marimo/_lsp/
 __marimo__/
 temp_audio/*.mp3 
 temp_audio/*.wav 
+temp_audio/*.mp3 
+temp_audio/*.wav 
