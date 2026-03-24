@@ -11,6 +11,7 @@ from langchain_groq import ChatGroq
 
 load_dotenv()
 
+# Guard GROQ_API_KEY before any heavy imports
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise EnvironmentError("GROQ_API_KEY is not set. Please add it to your .env file.")
@@ -70,6 +71,8 @@ class AgentState(TypedDict):
 
 
 tools = [lookup_scheme_database, search_online_fallback]
+
+# ChatGroq instantiated at module load — requires httpx==0.27.2 to avoid proxies error
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 llm_with_tools = llm.bind_tools(tools)
 

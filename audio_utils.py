@@ -74,6 +74,9 @@ class AudioHandler:
         try:
             communicate = edge_tts.Communicate(text, "ta-IN-PallaviNeural")
             await communicate.save(output_path)
+            if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                print("[ERROR] TTS produced empty file")
+                return ""
             return output_path
         except Exception as e:
             print(f"[ERROR] TTS Failed: {e}")

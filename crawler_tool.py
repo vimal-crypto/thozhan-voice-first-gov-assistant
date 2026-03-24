@@ -11,9 +11,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Warn instead of raise — agent.py already guards GROQ_API_KEY
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise EnvironmentError("GROQ_API_KEY is not set.")
+    print("[WARNING] GROQ_API_KEY is not set. Crawler will fail if invoked.")
 
 DB_PATH = Path(__file__).parent / "data" / "schemes_tamil.json"
 LOCK_PATH = str(DB_PATH) + ".lock"
