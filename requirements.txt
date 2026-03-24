@@ -4,16 +4,15 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20
 python-dotenv==1.0.1
 
-# AI & LLM — versions verified mutually compatible
-# langchain-groq==0.3.4 requires langchain-core>=0.3.66
-langchain==0.3.19
-langchain-core==0.3.66
-langchain-groq==0.3.4
-langgraph==0.2.59
-groq==0.22.0
+# AI & LLM — versions unpinned so pip resolves compatible set automatically
+langchain
+langchain-core
+langchain-groq
+langgraph
+groq
 
-# httpx intentionally unpinned — proxies kwarg is patched at runtime in agent.py
-httpx>=0.27.0
+# httpx unpinned — proxies kwarg patched at runtime in agent.py
+httpx
 
 # Speech & Audio
 SpeechRecognition==3.14.3
