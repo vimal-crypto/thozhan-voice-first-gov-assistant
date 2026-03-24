@@ -11,8 +11,8 @@ langchain-groq==0.3.4
 langgraph==0.2.59
 groq==0.22.0
 
-# HTTP client (must be pinned to avoid proxies conflict)
-httpx==0.28.1
+# HTTP — MUST stay at 0.27.2 (0.28+ removed 'proxies' kwarg, breaks groq SDK)
+httpx==0.27.2
 
 # Speech & Audio
 SpeechRecognition==3.14.3
