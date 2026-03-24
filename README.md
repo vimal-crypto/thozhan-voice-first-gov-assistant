@@ -2,6 +2,12 @@
 
 Thozhan helps Tamil-speaking people find government welfare schemes using voice - so they don't need to read or type anything. Built this because most govt portals are really hard to navigate, especially for people who aren't comfortable with English or typing.
 
+## 🎥 Demo
+
+[![Watch Demo](https://img.shields.io/badge/▶%20Watch%20Demo-Google%20Drive-blue?style=for-the-badge&logo=google-drive)](https://drive.google.com/file/d/1AcjEO6K5UcEc4yoMOtea_-FRx8QoaBio/view?usp=sharing)
+
+> Click the button above to watch a live demo of Thozhan in action.
+
 ## What Makes This Different
 
 ### 1. Voice-First in Tamil
@@ -143,13 +149,12 @@ Open `http://localhost:8000` in your browser.
 ```
 thozhan-voice-first-gov-assistant/
 ├── app.py                    # Main FastAPI server
-├── voiceagent/
-│   ├── agent.py              # LangGraph agent with tools
-│   ├── audio_utils.py        # STT & TTS handlers  
-│   ├── crawler_tool.py       # Web scraping tool
-│   ├── data/
-│   │   └── schemes_tamil.json  # Local scheme database
-│   └── temp_audio/           # Temp audio files
+├── agent.py                  # LangGraph agent with tools
+├── audio_utils.py            # STT & TTS handlers
+├── crawler_tool.py           # Web scraping tool
+├── data/
+│   └── schemes_tamil.json    # Local scheme database
+├── temp_audio/               # Temp audio files
 ├── static/
 │   └── index.html            # Web UI
 ├── requirements.txt
