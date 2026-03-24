@@ -2,20 +2,22 @@ import os
 import json
 from pathlib import Path
 from typing import TypedDict
+from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_groq import ChatGroq
 
-# NEVER hardcode API keys. Load from environment only.
+load_dotenv()
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise EnvironmentError("GROQ_API_KEY is not set. Please add it to your .env file.")
 
-from voice_agent.crawler_tool import AgenticCrawler
+from crawler_tool import AgenticCrawler
 
-DB_PATH = Path(__file__).parent / "voice_agent" / "data" / "schemes_tamil.json"
+DB_PATH = Path(__file__).parent / "data" / "schemes_tamil.json"
 
 
 @tool
@@ -68,7 +70,6 @@ class AgentState(TypedDict):
 
 
 tools = [lookup_scheme_database, search_online_fallback]
-
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 llm_with_tools = llm.bind_tools(tools)
 
@@ -82,29 +83,15 @@ SYSTEM_PROMPT = """
 பின்னர் வயது கேளுங்கள்.
 
 === கட்டாய விதிகள் ===
-
-1. **நினைவகம்**: உரையாடலில் பயனர் ஏற்கனவே கூறிய தகவல்களை (வயது, வருமானம், தொழில்) நினைவில் வைக்கவும். மீண்டும் கேட்காதீர்கள்.
-
-2. **அறிமுகம் ஒரு முறை மட்டும்**: முதல் பதிலில் மட்டும் உங்களை அறிமுகப்படுத்துங்கள். மீண்டும் சொல்ல வேண்டாம்.
-
+1. **நினைவகம்**: உரையாடலில் பயனர் ஏற்கனவே கூறிய தகவல்களை நினைவில் வைக்கவும். மீண்டும் கேட்காதீர்கள்.
+2. **அறிமுகம் ஒரு முறை மட்டும்**: முதல் பதிலில் மட்டும் உங்களை அறிமுகப்படுத்துங்கள்.
 3. **கேள்விகள்**: ஒரு நேரத்தில் ஒரு கேள்வி மட்டும் கேளுங்கள்.
-
 4. **சுருக்கமாக பேசு**: குரல் வழி உதவி என்பதால், பதில்கள் சுருக்கமாகவும் தெளிவாகவும் இருக்க வேண்டும்.
-
 5. **தமிழில் மட்டும்**: எல்லா பதில்களும் தமிழில் மட்டுமே இருக்க வேண்டும்.
 
 === உரையாடல் ஓட்டம் ===
-
-தேவையான தகவல்கள்:
-- வயது
-- ஆண்டு வருமானம்
-- தொழில்/வேலை
-
-இவற்றை சேகரித்த பின், பொருத்தமான மத்திய மற்றும் மாநில திட்டங்களை பரிந்துரைக்கவும்.
-
-=== முக்கியம் ===
-- ஏற்கனவே பெற்ற தகவல்களை மீண்டும் கேட்காதீர்கள்
-- பயனர் பதில் கொடுத்தால், அதை நினைவில் வைத்து அடுத்த படிக்கு செல்லவும்
+தேவையான தகவல்கள்: வயது, ஆண்டு வருமானம், தொழில்/வேலை
+இவற்றை சேகரித்த பின், பொருத்தமான திட்டங்களை பரிந்துரைக்கவும்.
 """
 
 
@@ -123,14 +110,11 @@ graph_builder = StateGraph(AgentState)
 graph_builder.add_node("agent", chatbot)
 tool_node = ToolNode(tools=tools)
 graph_builder.add_node("tools", tool_node)
-
 graph_builder.add_conditional_edges("agent", should_continue)
 graph_builder.add_edge("tools", "agent")
 graph_builder.set_entry_point("agent")
 
-# Use the real compiled LangGraph agent (tools are now active)
 app_agent = graph_builder.compile()
-
 
 if __name__ == "__main__":
     print("[INFO] Thozhan Agent initialized successfully!")

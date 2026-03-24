@@ -1,0 +1,57 @@
+[
+  {
+    "name_english": "PM Kisan Samman Nidhi",
+    "name_tamil": "பிரதம மந்திரி கிசான் சம்மான் நிதி",
+    "description_english": "Direct income support of Rs.6000 per year to small and marginal farmers.",
+    "description_tamil": "சிறு மற்றும் குறு விவசாயிகளுக்கு ஆண்டுக்கு ரூ.6000 நேரடி வருமான உதவி.",
+    "eligibility_criteria": ["Small and marginal farmer", "Land holding up to 2 hectares", "Valid Aadhaar"],
+    "benefits_english": "Rs.6000 per year in 3 installments of Rs.2000 each",
+    "benefits_tamil": "ஆண்டுக்கு ரூ.6000 - மூன்று தவணைகளில் ரூ.2000 வீதம்",
+    "category": "farmer agriculture",
+    "apply_url": "https://pmkisan.gov.in"
+  },
+  {
+    "name_english": "Magalir Urimai Thittam",
+    "name_tamil": "மகளிர் உரிமை திட்டம்",
+    "description_english": "Monthly financial assistance of Rs.1000 to women heads of family in Tamil Nadu.",
+    "description_tamil": "தமிழ்நாட்டில் குடும்பத் தலைவிகளுக்கு மாதம் ரூ.1000 நிதி உதவி.",
+    "eligibility_criteria": ["Woman head of family", "Tamil Nadu resident", "Age 18 and above", "Annual income below Rs.2.5 lakh"],
+    "benefits_english": "Rs.1000 per month direct bank transfer",
+    "benefits_tamil": "மாதம் ரூ.1000 நேரடி வங்கி கணக்கில் செலுத்தப்படும்",
+    "category": "women family",
+    "apply_url": "https://www.tn.gov.in"
+  },
+  {
+    "name_english": "PM Awas Yojana",
+    "name_tamil": "பிரதம மந்திரி ஆவாஸ் யோஜனா",
+    "description_english": "Housing scheme providing financial assistance for construction or purchase of house.",
+    "description_tamil": "வீடு கட்ட அல்லது வாங்க நிதி உதவி வழங்கும் திட்டம்.",
+    "eligibility_criteria": ["No pucca house owned", "Annual income below Rs.3 lakh for EWS", "Valid Aadhaar"],
+    "benefits_english": "Up to Rs.1.5 lakh subsidy for house construction",
+    "benefits_tamil": "வீடு கட்டுவதற்கு ரூ.1.5 லட்சம் வரை மானியம்",
+    "category": "housing shelter",
+    "apply_url": "https://pmaymis.gov.in"
+  },
+  {
+    "name_english": "Ayushman Bharat PM-JAY",
+    "name_tamil": "ஆயுஷ்மான் பாரத் பிரதம மந்திரி ஜன் ஆரோக்யா யோஜனா",
+    "description_english": "Health insurance scheme providing coverage of Rs.5 lakh per family per year.",
+    "description_tamil": "குடும்பத்திற்கு ஆண்டுக்கு ரூ.5 லட்சம் வரை சுகாதார காப்பீடு.",
+    "eligibility_criteria": ["Below poverty line family", "SECC database listed", "Valid Aadhaar"],
+    "benefits_english": "Rs.5 lakh health coverage per family per year",
+    "benefits_tamil": "ஆண்டுக்கு குடும்பத்திற்கு ரூ.5 லட்சம் சுகாதார செலவு",
+    "category": "health medical insurance",
+    "apply_url": "https://pmjay.gov.in"
+  },
+  {
+    "name_english": "National Scholarship Portal",
+    "name_tamil": "தேசிய உதவித்தொகை போர்டல்",
+    "description_english": "Central portal for all government scholarships for students from SC/ST/OBC and minority communities.",
+    "description_tamil": "SC/ST/OBC மற்றும் சிறுபான்மையினர் மாணவர்களுக்கான அரசு உதவித்தொகைகளுக்கான மத்திய போர்டல்.",
+    "eligibility_criteria": ["Student enrolled in recognized institution", "SC/ST/OBC or minority community", "Income below specified limit"],
+    "benefits_english": "Various scholarship amounts based on course and category",
+    "benefits_tamil": "படிப்பு மற்றும் வகையைப் பொறுத்து பல்வேறு உதவித்தொகை",
+    "category": "student education scholarship",
+    "apply_url": "https://scholarships.gov.in"
+  }
+]
