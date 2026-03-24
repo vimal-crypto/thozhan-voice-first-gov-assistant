@@ -21,25 +21,19 @@ class AudioHandler:
         self.recognizer = sr.Recognizer()
 
     def normalize_audio(self, input_path: str) -> str:
-        import wave
+        """
+        Browser MediaRecorder always sends webm/opus data regardless of
+        the filename extension we give it. So we ALWAYS run it through
+        pydub/ffmpeg to produce a clean 16-kHz mono WAV that Google STT
+        can read. We only skip conversion if it truly is a valid WAV.
+        """
+        output_path = input_path.rsplit('.', 1)[0] + "_clean.wav"
         try:
-            with wave.open(input_path, 'rb'):
-                return input_path
-        except Exception:
-            pass
-        try:
-            output_path = input_path.rsplit('.', 1)[0] + "_converted.wav"
-            ext = input_path.rsplit('.', 1)[-1].lower()
-            if ext == 'webm':
-                audio = AudioSegment.from_file(input_path, format="webm")
-            elif ext == 'mp3':
-                audio = AudioSegment.from_mp3(input_path)
-            elif ext == 'ogg':
-                audio = AudioSegment.from_ogg(input_path)
-            else:
-                audio = AudioSegment.from_file(input_path)
-            audio = audio.set_channels(1).set_frame_rate(16000)
+            # Let ffmpeg auto-detect the real container format
+            audio = AudioSegment.from_file(input_path)
+            audio = audio.set_channels(1).set_frame_rate(16000).set_sample_width(2)
             audio.export(output_path, format="wav")
+            print(f"[AUDIO] Converted to clean WAV: {output_path} ({len(audio)}ms)")
             return output_path
         except Exception as e:
             print(f"[ERROR] Audio conversion failed: {e}")
@@ -49,10 +43,12 @@ class AudioHandler:
         clean_path = self.normalize_audio(audio_file_path)
         try:
             with sr.AudioFile(clean_path) as source:
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                 audio_data = self.recognizer.record(source)
                 text = self.recognizer.recognize_google(audio_data, language="ta-IN")
                 return text
         except sr.UnknownValueError:
+            print("[STT] Google could not understand audio")
             return ""
         except sr.RequestError as e:
             print(f"[ERROR] STT Connection Error: {e}")
